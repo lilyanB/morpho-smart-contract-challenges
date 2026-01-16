@@ -4,16 +4,8 @@ pragma solidity 0.8.20;
 import {IAlienFactory} from "./Common.sol";
 
 contract AlienFactory is IAlienFactory {
-    address internal _parent;
-    uint256 internal _eyesNumber;
-    uint256 internal _legsNumber;
-    uint256 internal _armsNumber;
-    uint256 internal _antennaNumber;
-    bool internal _hasNose;
-    uint256 internal _height;
-    Color internal _color;
-    uint256 internal _age;
-    Planet internal _planet;
+    // Slot 0: _parent (160 bits) + _hasNose (1 bit) + _color (3 bits) + _planet (3 bits) + eyes/legs/arms/antenna (10 bits each) + _height (34 bits) + _age (15 bits) = 256 bits
+    uint256 internal _slot0;
 
     function setAlienAttributes(
         address parent,
@@ -27,23 +19,29 @@ contract AlienFactory is IAlienFactory {
         uint256 age,
         Planet planet
     ) external {
-        require(eyesNumber <= 1000);
-        require(legsNumber <= 1000);
-        require(armsNumber <= 1000);
-        require(antennaNumber <= 1000);
-        require(height <= 1e10);
-        require(age <= 2e4);
+        // < instead of <= save 6 gas
+        require(eyesNumber < 1001);
+        require(legsNumber < 1001);
+        require(armsNumber < 1001);
+        require(antennaNumber < 1001);
+        require(height < 1e10 + 1);
+        require(age < 2e4 + 1);
 
-        _parent = parent;
-        _eyesNumber = eyesNumber;
-        _legsNumber = legsNumber;
-        _armsNumber = armsNumber;
-        _antennaNumber = antennaNumber;
-        _hasNose = hasNose;
-        _height = height;
-        _color = color;
-        _age = age;
-        _planet = planet;
+        assembly {
+            // Pack everything into slot 0:
+            // _parent (0-159) + _hasNose (160) + _color (161-163) + _planet (164-166) + eyes (167-176) + legs (177-186) + arms (187-196) + antenna (197-206) + height (207-240) + age (241-255)
+            let packed := parent
+            packed := or(packed, shl(160, hasNose))
+            packed := or(packed, shl(161, color))
+            packed := or(packed, shl(164, planet))
+            packed := or(packed, shl(167, eyesNumber))
+            packed := or(packed, shl(177, legsNumber))
+            packed := or(packed, shl(187, armsNumber))
+            packed := or(packed, shl(197, antennaNumber))
+            packed := or(packed, shl(207, height))
+            packed := or(packed, shl(241, age))
+            sstore(0, packed)
+        }
     }
 
     function getAlienAttributes()
@@ -62,15 +60,20 @@ contract AlienFactory is IAlienFactory {
             Planet planet
         )
     {
-        parent = _parent;
-        eyesNumber = _eyesNumber;
-        legsNumber = _legsNumber;
-        armsNumber = _armsNumber;
-        antennaNumber = _antennaNumber;
-        hasNose = _hasNose;
-        height = _height;
-        color = _color;
-        age = _age;
-        planet = _planet;
+        assembly {
+            // Unpack slot 0:
+            // _parent (0-159) + _hasNose (160) + _color (161-163) + _planet (164-166) + eyes (167-176) + legs (177-186) + arms (187-196) + antenna (197-206) + height (207-240) + age (241-255)
+            let packed := sload(0)
+            parent := and(packed, 0xffffffffffffffffffffffffffffffffffffffff)
+            hasNose := and(shr(160, packed), 0x1)
+            color := and(shr(161, packed), 0x7)
+            planet := and(shr(164, packed), 0x7)
+            eyesNumber := and(shr(167, packed), 0x3ff)
+            legsNumber := and(shr(177, packed), 0x3ff)
+            armsNumber := and(shr(187, packed), 0x3ff)
+            antennaNumber := and(shr(197, packed), 0x3ff)
+            height := and(shr(207, packed), 0x3ffffffff)
+            age := and(shr(241, packed), 0x7fff)
+        }
     }
 }

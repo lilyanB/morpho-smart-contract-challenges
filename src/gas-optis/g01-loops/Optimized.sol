@@ -12,6 +12,7 @@ contract Loops is ILoops {
         uint256 i;
         do {
             result += array[i];
+            // SAFETY: cannot overflow as length cannot be over uint256
             unchecked {
                 ++i;
             }
@@ -22,6 +23,7 @@ contract Loops is ILoops {
         uint256 i;
         do {
             result += array[i];
+            // SAFETY: cannot overflow as length cannot be over 10
             unchecked {
                 ++i;
             }
@@ -34,6 +36,7 @@ contract Loops is ILoops {
         uint256 i;
         do {
             result += array[i];
+            // SAFETY: cannot overflow as length cannot be over 10
             unchecked {
                 ++i;
             }

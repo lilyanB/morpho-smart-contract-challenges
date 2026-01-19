@@ -32,13 +32,21 @@ contract MatrixMultiplication is IMatrixMultiplication {
     function matrixMul(uint256[][] calldata matrixB) external view returns (uint256[][] memory result) {
         uint256 m = _matrixA.length;
         uint256 n = matrixB[0].length;
+        uint256 k = matrixB.length;
 
         result = new uint256[][](m);
-        for (uint256 i = 0; i < m; i++) {
-            result[i] = new uint256[](n);
+        unchecked {
+            for (uint256 i; i < m; ++i) {
+                result[i] = new uint256[](n);
+                uint256[] memory rowA = _matrixA[i];
 
-            for (uint256 j = 0; j < n; j++) {
-                result[i][j] += matrixMulElement(matrixB, i, j);
+                for (uint256 j; j < n; ++j) {
+                    uint256 sum;
+                    for (uint256 p; p < k; ++p) {
+                        sum += rowA[p] * matrixB[p][j];
+                    }
+                    result[i][j] = sum;
+                }
             }
         }
     }
@@ -51,15 +59,13 @@ contract MatrixMultiplication is IMatrixMultiplication {
     /// @param i The row of the element to compute in the resulting matrix.
     /// @param j The column of the element to compute in the resulting matrix.
     /// @return result The calculated element of the resulting matrix.
-    function matrixMulElement(uint256[][] calldata matrixB, uint256 i, uint256 j)
-        public
-        view
-        returns (uint256 result)
-    {
+    function matrixMulElement(uint256[][] calldata matrixB, uint256 i, uint256 j) public view returns (uint256 result) {
         uint256 size = matrixB.length;
-        for (uint256 k = 0; k < size; k++) {
+        uint256[] memory rowA = _matrixA[i];
+        // use ++k to avoid unnecessary copy of k
+        for (uint256 k = 0; k < size; ++k) {
             unchecked {
-                result += _matrixA[i][k] * matrixB[k][j];
+                result += rowA[k] * matrixB[k][j];
             }
         }
     }

@@ -5,29 +5,37 @@ import {GuessTheNumber, ISolver} from "./Common.sol";
 
 contract Solver is ISolver {
     function solve(GuessTheNumber game) external returns (uint256) {
-        uint256 min = 0;
+        uint256 min;
         uint256 max = type(uint256).max;
-        while (max - min >= 1) {
-            uint256 middle = min + (max - min) / 2;
-            try this.cheat(game, middle) {
-                revert();
-            } catch Error(string memory err) {
-                GuessTheNumber.Result result = abi.decode(bytes(err), (GuessTheNumber.Result));
-                if (result == GuessTheNumber.Result.GREATER) {
-                    min = middle + 1;
-                } else if (result == GuessTheNumber.Result.LESS) {
-                    max = middle - 1;
-                } else {
-                    min = middle;
-                    max = middle;
+        do {
+            uint256 middle;
+            unchecked {
+                middle = min + ((max - min) >> 1);
+            }
+            try this.cheat(game, middle) {}
+            catch Error(string memory err) {
+                assembly {
+                    switch mload(add(err, 32))
+                    case 1 {
+                        // GREATER: min = middle + 1
+                        min := add(middle, 1)
+                    }
+                    case 0 {
+                        // LESS: max = middle - 1
+                        max := sub(middle, 1)
+                    }
+                    default {
+                        // EQUAL: return middle
+                        mstore(0x00, middle)
+                        return(0x00, 0x20)
+                    }
                 }
             }
-        }
+        } while (min < max);
         return min;
     }
 
     function cheat(GuessTheNumber game, uint256 guess) external {
-        GuessTheNumber.Result result = game.guess(guess);
-        revert(string(abi.encode(result)));
+        revert(string(abi.encode(game.guess(guess))));
     }
 }

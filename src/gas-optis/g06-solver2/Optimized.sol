@@ -5,7 +5,7 @@ import {GuessTheNumber2, ISolver2} from "./Common.sol";
 
 contract Solver2 is ISolver2 {
     function solve(GuessTheNumber2 game) external returns (uint256) {
-        // version 1 to analyse and display byte code:
+        // version 1 to analyze and display byte code:
         // uint256 value;
         // assembly {
         //     // from "https://docs.soliditylang.org/en/latest/assembly.html#example"
